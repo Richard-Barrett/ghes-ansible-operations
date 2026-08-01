@@ -1,3 +1,5 @@
 ---
-# No upgrade variables are intentionally defined here. Do not run the upgrade
-# playbook against this host using the current Galaxy role.
+ghes_upgrade_external_url: https://github.example.com
+
+# Replica hosts intentionally do not define upgrade topology or approval values.
+# Do not target them with playbooks/upgrade-ha-primary.yml.

@@ -31,3 +31,7 @@ artifacts/*
 .idea/
 .DS_Store
 Thumbs.db
+
+# Agents and other temporary files
+*.log
+.codex*

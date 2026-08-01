@@ -1,0 +1,73 @@
+---
+version: 2
+
+updates:
+  # Python development dependencies:
+  # ansible-core, ansible-lint, molecule, pre-commit, yamllint, etc.
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Chicago
+
+    open-pull-requests-limit: 5
+    rebase-strategy: auto
+
+    labels:
+      - dependencies
+      - python
+
+    commit-message:
+      prefix: deps
+      include: scope
+
+    groups:
+      python-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+
+    ignore:
+      - dependency-name: ansible-core
+        update-types:
+          - version-update:semver-major
+
+      - dependency-name: ansible-lint
+        update-types:
+          - version-update:semver-major
+
+      - dependency-name: molecule
+        update-types:
+          - version-update:semver-major
+
+  # Actions referenced by workflows under .github/workflows/.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:15"
+      timezone: America/Chicago
+
+    open-pull-requests-limit: 5
+    rebase-strategy: auto
+
+    labels:
+      - dependencies
+      - github-actions
+
+    commit-message:
+      prefix: ci
+      include: scope
+
+    groups:
+      github-actions-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch

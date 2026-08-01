@@ -1,0 +1,23 @@
+---
+- name: Inspect GHES HA replication status
+  hosts: ghes_primary
+  gather_facts: false
+  any_errors_fatal: true
+
+  pre_tasks:
+    - name: Require exactly one HA primary
+      ansible.builtin.assert:
+        that:
+          - ansible_play_hosts_all | length == 1
+        fail_msg: >-
+          Target exactly one host from ghes_primary by using --limit.
+
+  tasks:
+    - name: Read verbose replication status from the primary
+      ansible.builtin.raw: ghe-repl-status -vv
+      register: ghes_replication_status
+      changed_when: false
+
+    - name: Display replication status
+      ansible.builtin.debug:
+        var: ghes_replication_status.stdout_lines

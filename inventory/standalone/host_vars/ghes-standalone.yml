@@ -1,0 +1,6 @@
+---
+ghes_upgrade_topology: standalone
+ghes_upgrade_external_url: https://github.example.com
+
+ghes_upgrade_expected_current_version: ""
+ghes_upgrade_target_version: ""

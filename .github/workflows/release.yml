@@ -1,0 +1,50 @@
+---
+name: "Release"
+
+"on":
+  workflow_run:
+    workflows:
+      - "Tag"
+    types:
+      - completed
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the tagged commit
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+
+      - name: Find the semantic-version tag
+        id: release
+        env:
+          TAGGED_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          release_tag="$(git tag --points-at "${TAGGED_SHA}" --sort=-v:refname | head -n 1)"
+          if [ -z "${release_tag}" ]; then
+            printf 'No tag points at workflow commit %s.\n' "${TAGGED_SHA}"
+            exit 1
+          fi
+          printf 'tag=%s\n' "${release_tag}" >> "${GITHUB_OUTPUT}"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          if gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
+            printf 'Release %s already exists; nothing to create.\n' "${RELEASE_TAG}"
+          else
+            gh release create "${RELEASE_TAG}" \
+              --generate-notes \
+              --title "${RELEASE_TAG}" \
+              --verify-tag
+          fi
