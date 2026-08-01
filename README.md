@@ -2,6 +2,9 @@
 
 # Ansible Playbook: `ghes-ansible-operations`
 
+[![Lint](https://github.com/Richard-Barrett/ghes-ansible-operations/actions/workflows/lint.yml/badge.svg)](https://github.com/Richard-Barrett/ghes-ansible-operations/actions/workflows/lint.yml)
+[![Pre-commit](https://github.com/Richard-Barrett/ghes-ansible-operations/actions/workflows/pre-commit.yml/badge.svg)](https://github.com/Richard-Barrett/ghes-ansible-operations/actions/workflows/pre-commit.yml)
+
 A GHES Ansible Playbook Repository Consuming [ghes_upgrade](https://galaxy.ansible.com/ui/standalone/roles/Richard-Barrett/ghes_upgrade/) Ansible Galaxy Role
 
 - [ghes_upgrade Ansible Galaxy Role Source Code](https://github.com/Richard-Barrett/ansible-role-ghes-maintenance)
