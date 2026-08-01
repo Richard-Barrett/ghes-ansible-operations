@@ -21,6 +21,7 @@ UPGRADE_VARS_ARG := $(if $(wildcard $(UPGRADE_VARS)),--extra-vars @$(UPGRADE_VAR
 
 .PHONY: help setup install requirements hooks lint syntax validate inventory connectivity health replication-status service-status restart-core-services upgrade-standalone upgrade-ha-primary clean
 
+.PHONY: deps pre-commit
 help: ## Show available targets and common variables
 	@printf '\nGHES Ansible Operations\n\n'
 	@printf 'Usage: make <target> [ENV=standalone|staging|production] [LIMIT=host-or-group]\n\n'
@@ -40,6 +41,8 @@ setup: $(VENV)/bin/activate ## Create the virtual environment and install depend
 	$(PIP) install -r requirements-dev.txt
 	$(MAKE) requirements
 
+deps: setup ## Install development and Ansible Galaxy dependencies
+
 install: setup ## Alias for setup
 
 requirements: $(VENV)/bin/activate ## Install the Galaxy role into the local roles path
@@ -48,6 +51,9 @@ requirements: $(VENV)/bin/activate ## Install the Galaxy role into the local rol
 hooks: setup ## Install Git pre-commit and pre-push hooks
 	$(PRE_COMMIT) install
 	$(PRE_COMMIT) install --hook-type pre-push
+
+pre-commit: setup ## Run pre-commit against all repository files
+	$(PRE_COMMIT) run --all-files
 
 lint: setup ## Run YAML and Ansible linting
 	$(PRE_COMMIT) run --all-files
