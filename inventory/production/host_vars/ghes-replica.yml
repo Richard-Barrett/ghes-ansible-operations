@@ -1,0 +1,3 @@
+---
+# No upgrade variables are intentionally defined here. Do not run the upgrade
+# playbook against this host using the current Galaxy role.

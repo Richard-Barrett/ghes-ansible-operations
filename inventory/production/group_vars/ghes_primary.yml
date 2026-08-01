@@ -1,0 +1,3 @@
+---
+ghes_upgrade_topology: ha_primary
+ghes_upgrade_validate_replication: true

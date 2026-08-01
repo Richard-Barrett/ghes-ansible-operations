@@ -1,0 +1,26 @@
+---
+# Copy to a local ignored file, update the values, and optionally encrypt it:
+#   cp vars/upgrade.example.yml vars/upgrade.yml
+#   ansible-vault encrypt vars/upgrade.yml
+
+ghes_upgrade_confirm: true
+ghes_upgrade_backup_confirmed: true
+ghes_upgrade_snapshot_confirmed: true
+
+ghes_upgrade_expected_current_version: "3.20.4"
+ghes_upgrade_target_version: "3.21.1"
+
+# Supply with GHES_UPGRADE_PACKAGE instead when preferred.
+ghes_upgrade_package_local_path: /opt/ansible-ghes/packages/github-enterprise-3.21.1.pkg
+ghes_upgrade_package_remote_path: /home/admin/github-enterprise-3.21.1.pkg
+
+ghes_upgrade_remove_package_after: false
+ghes_upgrade_wait_for_background_jobs: true
+
+ghes_upgrade_precheck_commands:
+  - name: Check appliance services
+    command: ghe-service-list
+
+ghes_upgrade_postcheck_commands:
+  - name: Confirm appliance services
+    command: ghe-service-list

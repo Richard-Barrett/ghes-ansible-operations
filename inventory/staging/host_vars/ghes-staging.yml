@@ -1,0 +1,8 @@
+---
+ghes_upgrade_topology: standalone
+ghes_upgrade_external_url: https://github-staging.example.com
+
+# Set these for each approved upgrade window, preferably using an encrypted
+# extra-vars file rather than committing live values here.
+ghes_upgrade_expected_current_version: ""
+ghes_upgrade_target_version: ""

@@ -1,0 +1,4 @@
+---
+# The published role does not orchestrate replica upgrades. Replica hosts are
+# present for read-only health checks and future HA orchestration only.
+ghes_upgrade_topology: standalone

@@ -1,0 +1,39 @@
+---
+- name: Run read-only GHES health checks
+  hosts: ghes
+  gather_facts: false
+  serial: 1
+
+  tasks:
+    - name: Check GHES configuration
+      ansible.builtin.command: ghe-config-check --error-checks-only
+      changed_when: false
+
+    - name: Check background upgrade jobs
+      ansible.builtin.command: ghe-check-background-upgrade-jobs
+      changed_when: false
+
+    - name: Check disk usage
+      ansible.builtin.command: ghe-check-disk-usage
+      changed_when: false
+      failed_when: false
+
+    - name: List GHES services
+      ansible.builtin.command: ghe-service-list
+      register: ghes_services
+      changed_when: false
+
+    - name: Show service status
+      ansible.builtin.debug:
+        var: ghes_services.stdout_lines
+
+    - name: Check HA replication from primary
+      ansible.builtin.command: ghe-repl-status -vv
+      register: ghes_replication
+      changed_when: false
+      when: inventory_hostname in groups.get('ghes_primary', [])
+
+    - name: Show replication status
+      ansible.builtin.debug:
+        var: ghes_replication.stdout_lines
+      when: inventory_hostname in groups.get('ghes_primary', [])

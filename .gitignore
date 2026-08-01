@@ -1,0 +1,33 @@
+.ansible/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.retry
+.pytest_cache/
+.mypy_cache/
+.cache/
+
+# Local inventories, variables, credentials, and vault material
+inventory/**/host_vars/*.local.yml
+inventory/**/group_vars/*.local.yml
+vars/upgrade.yml
+*.vault.yml
+*.vault.yaml
+.vault-password
+*.pem
+*.key
+
+# Large GHES packages and generated evidence
+packages/*
+!packages/.gitkeep
+artifacts/*
+!artifacts/.gitkeep
+*.pkg
+*.hpkg
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

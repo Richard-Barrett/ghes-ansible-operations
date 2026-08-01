@@ -1,0 +1,15 @@
+---
+- name: Show GitHub Enterprise Server service status
+  hosts: ghes
+  gather_facts: false
+  serial: 1
+
+  tasks:
+    - name: List GHES services
+      ansible.builtin.command: ghe-service-list
+      register: service_status
+      changed_when: false
+
+    - name: Display GHES services
+      ansible.builtin.debug:
+        var: service_status.stdout_lines

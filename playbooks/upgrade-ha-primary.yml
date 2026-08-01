@@ -1,0 +1,22 @@
+---
+- name: Upgrade an HA primary with replication validation
+  hosts: ghes_primary
+  gather_facts: false
+  serial: 1
+  any_errors_fatal: true
+
+  pre_tasks:
+    - name: Require exactly one targeted HA primary
+      ansible.builtin.assert:
+        that:
+          - ansible_play_hosts_all | length == 1
+        fail_msg: "Target exactly one HA primary by using --limit."
+
+    - name: Explain HA scope
+      ansible.builtin.debug:
+        msg: >-
+          This play upgrades only the HA primary and validates replication.
+          It does not sequence, upgrade, promote, or fail over replicas.
+
+  roles:
+    - role: ghes_upgrade

@@ -1,0 +1,26 @@
+---
+- name: Validate administrative SSH and GHES CLI access
+  hosts: ghes
+  gather_facts: false
+  serial: 1
+
+  tasks:
+    - name: Read logged-in account
+      ansible.builtin.raw: whoami
+      register: connectivity_user
+      changed_when: false
+
+    - name: Require the GHES admin account
+      ansible.builtin.assert:
+        that:
+          - connectivity_user.stdout | trim == 'admin'
+        fail_msg: "Administrative SSH must use the GHES admin account."
+
+    - name: Read GHES version
+      ansible.builtin.raw: ghe-version
+      register: connectivity_version
+      changed_when: false
+
+    - name: Show appliance version
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }}: {{ connectivity_version.stdout | trim }}"

@@ -1,0 +1,17 @@
+---
+- name: Upgrade standalone GitHub Enterprise Server
+  hosts: ghes_standalone
+  gather_facts: false
+  serial: 1
+  any_errors_fatal: true
+
+  pre_tasks:
+    - name: Require exactly one targeted standalone appliance
+      ansible.builtin.assert:
+        that:
+          - ansible_play_hosts_all | length == 1
+        fail_msg: >-
+          Target exactly one standalone GHES appliance by using --limit.
+
+  roles:
+    - role: ghes_upgrade

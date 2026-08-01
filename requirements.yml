@@ -1,0 +1,6 @@
+---
+roles:
+  - name: ghes_upgrade
+    src: Richard-Barrett.ghes_upgrade
+    # Pin a released Galaxy version for production use, for example:
+    # version: "1.0.0"
