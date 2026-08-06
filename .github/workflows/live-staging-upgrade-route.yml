@@ -1,0 +1,147 @@
+---
+name: Live staging upgrade route
+
+"on":
+  workflow_dispatch:
+    inputs:
+      route_json:
+        description: >-
+          JSON route; packages must already exist at each package_remote_path
+        required: true
+        type: string
+      confirmation:
+        description: Type UPGRADE to execute the route
+        required: true
+        type: string
+      backup_confirmed:
+        description: Confirm a recent successful backup exists
+        required: true
+        default: false
+        type: boolean
+      snapshot_confirmed:
+        description: Confirm a fresh VM snapshot exists
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ghes-live-staging-upgrade
+  cancel-in-progress: false
+
+jobs:
+  upgrade:
+    name: Upgrade protected staging appliance
+    runs-on: [self-hosted, linux, ghes-staging]
+    environment: ghes-staging
+    timeout-minutes: 360
+    env:
+      GHES_HOST: "${{ vars.GHES_STAGING_HOST }}"
+      ROUTE_JSON: "${{ inputs.route_json }}"
+
+    steps:
+      - name: Require explicit confirmation and environment configuration
+        env:
+          CONFIRMATION: "${{ inputs.confirmation }}"
+          BACKUP_CONFIRMED: "${{ inputs.backup_confirmed }}"
+          SNAPSHOT_CONFIRMED: "${{ inputs.snapshot_confirmed }}"
+          SSH_PRIVATE_KEY: "${{ secrets.GHES_SSH_PRIVATE_KEY }}"
+          SSH_KNOWN_HOSTS: "${{ secrets.GHES_SSH_KNOWN_HOSTS }}"
+        run: |
+          test "${CONFIRMATION}" = UPGRADE
+          test "${BACKUP_CONFIRMED}" = true
+          test "${SNAPSHOT_CONFIRMED}" = true
+          test -n "${GHES_HOST}"
+          test -n "${SSH_PRIVATE_KEY}"
+          test -n "${SSH_KNOWN_HOSTS}"
+          jq -e '
+            type == "array" and length > 0 and
+            all(.[];
+              (.from | type == "string") and
+              (.to | type == "string") and
+              (.package_remote_path | type == "string")
+            )
+          ' <<<"${ROUTE_JSON}" >/dev/null
+
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Install Ansible and the GHES upgrade role
+        run: |
+          python -m pip install "ansible-core>=2.15,<2.20"
+          ansible-galaxy role install \
+            -r requirements.yml \
+            -p .ansible/roles \
+            --force
+
+      - name: Prepare ephemeral inventory and route variables
+        env:
+          SSH_PRIVATE_KEY: "${{ secrets.GHES_SSH_PRIVATE_KEY }}"
+          SSH_KNOWN_HOSTS: "${{ secrets.GHES_SSH_KNOWN_HOSTS }}"
+        run: |
+          install -m 0700 -d "${RUNNER_TEMP}/ghes-upgrade"
+          printf '%s\n' "${SSH_PRIVATE_KEY}" \
+            >"${RUNNER_TEMP}/ghes-upgrade/id_ghes"
+          chmod 0600 "${RUNNER_TEMP}/ghes-upgrade/id_ghes"
+          printf '%s\n' "${SSH_KNOWN_HOSTS}" \
+            >"${RUNNER_TEMP}/ghes-upgrade/known_hosts"
+          chmod 0600 "${RUNNER_TEMP}/ghes-upgrade/known_hosts"
+
+          jq -n \
+            --arg host "${GHES_HOST}" \
+            --arg key "${RUNNER_TEMP}/ghes-upgrade/id_ghes" \
+            --arg known_hosts "${RUNNER_TEMP}/ghes-upgrade/known_hosts" \
+            '{
+              all: {
+                children: {
+                  ghes_standalone: {
+                    hosts: {
+                      "ghes-staging": {
+                        ansible_host: $host,
+                        ansible_user: "admin",
+                        ansible_port: 122,
+                        ansible_ssh_private_key_file: $key,
+                        ansible_ssh_common_args:
+                          ("-o UserKnownHostsFile=" + $known_hosts),
+                        ghes_upgrade_artifact_dir:
+                          "artifacts/live-upgrade"
+                      }
+                    }
+                  }
+                }
+              }
+            }' >"${RUNNER_TEMP}/ghes-upgrade/inventory.json"
+
+          jq -n \
+            --argjson route "${ROUTE_JSON}" \
+            '{
+              ghes_upgrade_route_confirm: true,
+              ghes_upgrade_backup_confirmed: true,
+              ghes_upgrade_snapshot_confirmed: true,
+              ghes_upgrade_route: $route
+            }' >"${RUNNER_TEMP}/ghes-upgrade/route.json"
+
+      - name: Execute and validate the live route
+        run: |
+          ansible-playbook \
+            -i "${RUNNER_TEMP}/ghes-upgrade/inventory.json" \
+            playbooks/upgrade-route.yml \
+            --extra-vars "@${RUNNER_TEMP}/ghes-upgrade/route.json"
+
+      - name: Upload upgrade evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ghes-live-upgrade-evidence-${{ github.run_id }}
+          path: artifacts/live-upgrade/
+          if-no-files-found: warn
+          retention-days: 30

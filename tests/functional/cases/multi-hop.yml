@@ -1,0 +1,9 @@
+---
+ghes_upgrade_route_confirm: true
+ghes_upgrade_route:
+  - from: "3.17.12"
+    to: "3.19.8"
+    package_remote_path: /home/admin/github-enterprise-3.19.8.pkg
+  - from: "3.19.8"
+    to: "3.21.1"
+    package_remote_path: /home/admin/github-enterprise-3.21.1.pkg

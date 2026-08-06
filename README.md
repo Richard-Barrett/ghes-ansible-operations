@@ -25,6 +25,7 @@ node. It supports two inventory patterns:
 - Validate GHES administrative SSH connectivity on port 122.
 - Run read-only configuration, disk, service, and health checks.
 - Upgrade one standalone GHES appliance.
+- Upgrade one standalone appliance through a validated multi-hop route.
 - Upgrade one HA primary while validating replication.
 - Inventory and inspect production replicas.
 - Display HA replication status from the primary.
@@ -52,6 +53,7 @@ node. It supports two inventory patterns:
 │   ├── restart-core-services.yml
 │   ├── service-status.yml
 │   ├── upgrade-ha-primary.yml
+│   ├── upgrade-route.yml
 │   └── upgrade-standalone.yml
 ├── vars/
 │   └── upgrade.example.yml
@@ -165,6 +167,69 @@ ghes_upgrade_target_version: "3.21.1"
 ghes_upgrade_package_local_path: /opt/ansible-ghes/packages/github-enterprise-3.21.1.pkg
 ghes_upgrade_package_remote_path: /home/admin/github-enterprise-3.21.1.pkg
 ```
+
+## Functional upgrade-route testing
+
+The repository has two complementary test levels.
+
+The `Functional upgrade routes` workflow runs on every pull request without a
+GHES license or appliance. It invokes `playbooks/upgrade-route.yml` with a
+recording test double for the Galaxy role and verifies these routes:
+
+- Patch upgrade within one feature release.
+- One-feature and two-feature upgrades.
+- A contiguous multi-hop upgrade.
+- Rejection of a three-feature jump.
+- Rejection of disconnected route steps.
+
+Run the same matrix locally after installing the development dependencies:
+
+```bash
+make functional
+```
+
+A route is a list of explicit, contiguous steps. For example:
+
+```yaml
+---
+ghes_upgrade_route_confirm: true
+ghes_upgrade_backup_confirmed: true
+ghes_upgrade_snapshot_confirmed: true
+ghes_upgrade_route:
+  - from: "3.17.12"
+    to: "3.19.8"
+    package_remote_path: /home/admin/github-enterprise-3.19.8.pkg
+  - from: "3.19.8"
+    to: "3.21.1"
+    package_remote_path: /home/admin/github-enterprise-3.21.1.pkg
+```
+
+Use `make upgrade-route ENV=staging LIMIT=ghes-staging` to execute a route from
+`vars/upgrade.yml`.
+
+The manually dispatched `Live staging upgrade route` workflow performs the
+real appliance test. Configure a protected GitHub environment named
+`ghes-staging` with required reviewers, an environment variable named
+`GHES_STAGING_HOST`, and these environment secrets:
+
+- `GHES_SSH_PRIVATE_KEY`: the administrative SSH private key.
+- `GHES_SSH_KNOWN_HOSTS`: a pinned SSH host-key entry for port 122.
+
+Attach the `ghes-staging` label to a private-network Linux self-hosted runner.
+Before dispatch, place every `.pkg` or `.hpkg` from the route on the staging
+appliance. Pass the route as JSON, confirm the backup and snapshot, and type
+`UPGRADE`; the workflow serializes runs and retains the role's evidence
+artifact.
+
+```json
+[{"from":"3.19.8","to":"3.21.1","package_remote_path":"/home/admin/github-enterprise-3.21.1.pkg"}]
+```
+
+The simulated workflow validates orchestration, input guards, and role calls.
+It does not emulate GHES migrations, storage, reboot behavior, replication, or
+the web/API result. Those behaviors require a disposable staging appliance.
+Use GitHub's Upgrade Assistant to confirm each real route and use the latest
+patch release available for every feature release.
 
 ## Safety notes
 

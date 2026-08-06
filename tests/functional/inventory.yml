@@ -1,0 +1,8 @@
+---
+all:
+  children:
+    ghes_standalone:
+      hosts:
+        simulated-ghes:
+          ansible_connection: local
+          ansible_remote_tmp: /tmp/ghes-ansible-functional

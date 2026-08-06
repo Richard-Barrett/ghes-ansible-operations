@@ -1,0 +1,66 @@
+---
+- name: Upgrade a standalone GHES appliance through a validated route
+  hosts: ghes_standalone
+  gather_facts: false
+  serial: 1
+  any_errors_fatal: true
+
+  pre_tasks:
+    - name: Require one appliance and explicit route confirmation
+      ansible.builtin.assert:
+        that:
+          - ansible_play_hosts_all | length == 1
+          - ghes_upgrade_route_confirm | default(false) | bool
+          - ghes_upgrade_route is sequence
+          - ghes_upgrade_route is not string
+          - ghes_upgrade_route | length > 0
+        fail_msg: >-
+          Target exactly one standalone appliance, provide a non-empty
+          ghes_upgrade_route, and set ghes_upgrade_route_confirm=true.
+
+    - name: Validate every upgrade step
+      ansible.builtin.assert:
+        that:
+          - ghes_upgrade_step.from is defined
+          - ghes_upgrade_step.to is defined
+          - ghes_upgrade_step.from is match('^[0-9]+[.][0-9]+[.][0-9]+$')
+          - ghes_upgrade_step.to is match('^[0-9]+[.][0-9]+[.][0-9]+$')
+          - ghes_upgrade_step.from is version(ghes_upgrade_step.to, '<')
+          - ghes_upgrade_step.from.split('.') | length >= 2
+          - ghes_upgrade_step.to.split('.') | length >= 2
+          - ghes_upgrade_step.from.split('.')[0] == ghes_upgrade_step.to.split('.')[0]
+          - >-
+            (ghes_upgrade_step.to.split('.')[1] | int) -
+            (ghes_upgrade_step.from.split('.')[1] | int) <= 2
+          - >-
+            ansible_loop.first or
+            ghes_upgrade_step.from == ansible_loop.previtem.to
+          - >-
+            ghes_upgrade_step.package_local_path | default('') | length > 0 or
+            ghes_upgrade_step.package_remote_path | default('') | length > 0
+        fail_msg: >-
+          Invalid route step {{ ghes_upgrade_step | to_json }}. Versions must
+          increase, feature upgrades cannot jump more than two releases, steps
+          must be contiguous, and each step needs a local or remote package.
+      loop: "{{ ghes_upgrade_route }}"
+      loop_control:
+        loop_var: ghes_upgrade_step
+        extended: true
+        label: "{{ ghes_upgrade_step.from | default('?') }} -> {{ ghes_upgrade_step.to | default('?') }}"
+
+  tasks:
+    - name: Run each upgrade step and wait for its validation to finish
+      ansible.builtin.include_role:
+        name: ghes_upgrade
+      vars:
+        ghes_upgrade_confirm: true
+        ghes_upgrade_expected_current_version: "{{ ghes_upgrade_step.from }}"
+        ghes_upgrade_target_version: "{{ ghes_upgrade_step.to }}"
+        ghes_upgrade_package_local_path: "{{ ghes_upgrade_step.package_local_path | default('') }}"
+        ghes_upgrade_package_remote_path: >-
+          {{ ghes_upgrade_step.package_remote_path |
+             default('/home/admin/github-enterprise-' ~ ghes_upgrade_step.to ~ '.pkg') }}
+      loop: "{{ ghes_upgrade_route }}"
+      loop_control:
+        loop_var: ghes_upgrade_step
+        label: "{{ ghes_upgrade_step.from }} -> {{ ghes_upgrade_step.to }}"

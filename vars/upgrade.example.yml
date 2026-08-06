@@ -24,3 +24,15 @@ ghes_upgrade_precheck_commands:
 ghes_upgrade_postcheck_commands:
   - name: Confirm appliance services
     command: ghe-service-list
+
+# For playbooks/upgrade-route.yml, replace the single-version variables above
+# with explicit contiguous steps. Each feature-release jump can span at most
+# two releases. Use package_remote_path when packages are already staged.
+# ghes_upgrade_route_confirm: true
+# ghes_upgrade_route:
+#   - from: "3.17.12"
+#     to: "3.19.8"
+#     package_remote_path: /home/admin/github-enterprise-3.19.8.pkg
+#   - from: "3.19.8"
+#     to: "3.21.1"
+#     package_remote_path: /home/admin/github-enterprise-3.21.1.pkg
