@@ -19,8 +19,9 @@ LIMIT_ARG := $(if $(LIMIT),--limit $(LIMIT),)
 EXTRA_VARS_ARG := $(if $(EXTRA_VARS),--extra-vars "$(EXTRA_VARS)",)
 UPGRADE_VARS_ARG := $(if $(wildcard $(UPGRADE_VARS)),--extra-vars @$(UPGRADE_VARS),)
 
-.PHONY: help setup install requirements hooks lint syntax validate inventory connectivity health replication-status service-status restart-core-services upgrade-standalone upgrade-ha-primary clean
+.PHONY: help setup install requirements hooks lint syntax validate functional inventory connectivity health replication-status service-status restart-core-services upgrade-standalone upgrade-ha-primary upgrade-route clean
 
+.PHONY: deps pre-commit
 help: ## Show available targets and common variables
 	@printf '\nGHES Ansible Operations\n\n'
 	@printf 'Usage: make <target> [ENV=standalone|staging|production] [LIMIT=host-or-group]\n\n'
@@ -40,6 +41,8 @@ setup: $(VENV)/bin/activate ## Create the virtual environment and install depend
 	$(PIP) install -r requirements-dev.txt
 	$(MAKE) requirements
 
+deps: setup ## Install development and Ansible Galaxy dependencies
+
 install: setup ## Alias for setup
 
 requirements: $(VENV)/bin/activate ## Install the Galaxy role into the local roles path
@@ -48,6 +51,9 @@ requirements: $(VENV)/bin/activate ## Install the Galaxy role into the local rol
 hooks: setup ## Install Git pre-commit and pre-push hooks
 	$(PRE_COMMIT) install
 	$(PRE_COMMIT) install --hook-type pre-push
+
+pre-commit: setup ## Run pre-commit against all repository files
+	$(PRE_COMMIT) run --all-files
 
 lint: setup ## Run YAML and Ansible linting
 	$(PRE_COMMIT) run --all-files
@@ -61,6 +67,14 @@ syntax: setup ## Run syntax checks using the selected inventory
 	done
 
 validate: lint syntax ## Run all static validation
+
+functional: ## Simulate supported and rejected GHES upgrade routes
+	tests/functional/run-route-test.sh patch success
+	tests/functional/run-route-test.sh one-release success
+	tests/functional/run-route-test.sh two-releases success
+	tests/functional/run-route-test.sh multi-hop success
+	tests/functional/run-route-test.sh unsupported-jump failure
+	tests/functional/run-route-test.sh disconnected failure
 
 inventory: setup ## Display the selected inventory graph
 	$(VENV)/bin/ansible-inventory -i $(INVENTORY) --graph
@@ -93,6 +107,12 @@ upgrade-ha-primary: setup ## Upgrade exactly one HA primary and validate replica
 	@test -n "$(LIMIT)" || (echo "LIMIT is required"; exit 2)
 	@test -f "$(UPGRADE_VARS)" || (echo "Create $(UPGRADE_VARS) from vars/upgrade.example.yml"; exit 2)
 	$(ANSIBLE_PLAYBOOK) -i $(INVENTORY) playbooks/upgrade-ha-primary.yml \
+	  $(LIMIT_ARG) $(UPGRADE_VARS_ARG) $(EXTRA_VARS_ARG)
+
+upgrade-route: setup ## Upgrade one standalone appliance through a validated route
+	@test -n "$(LIMIT)" || (echo "LIMIT is required"; exit 2)
+	@test -f "$(UPGRADE_VARS)" || (echo "Create $(UPGRADE_VARS) with ghes_upgrade_route"; exit 2)
+	$(ANSIBLE_PLAYBOOK) -i $(INVENTORY) playbooks/upgrade-route.yml \
 	  $(LIMIT_ARG) $(UPGRADE_VARS_ARG) $(EXTRA_VARS_ARG)
 
 clean: ## Remove local Python and Ansible artifacts

@@ -1,0 +1,19 @@
+---
+- name: Check the route passed the expected role interface
+  ansible.builtin.assert:
+    that:
+      - ghes_upgrade_confirm | bool
+      - ghes_upgrade_expected_current_version | length > 0
+      - ghes_upgrade_target_version | length > 0
+      - >-
+        ghes_upgrade_package_local_path | default('') | length > 0 or
+        ghes_upgrade_package_remote_path | default('') | length > 0
+
+- name: Record the simulated upgrade call
+  ansible.builtin.lineinfile:
+    path: "{{ ghes_upgrade_route_call_log }}"
+    line: >-
+      {{ ghes_upgrade_expected_current_version }} ->
+      {{ ghes_upgrade_target_version }}
+    create: true
+    mode: "0600"
