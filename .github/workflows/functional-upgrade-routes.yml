@@ -1,0 +1,52 @@
+---
+name: Functional upgrade routes
+
+"on":
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  simulated-route:
+    name: "Route: ${{ matrix.case }}"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - case: patch
+            expected: success
+          - case: one-release
+            expected: success
+          - case: two-releases
+            expected: success
+          - case: multi-hop
+            expected: success
+          - case: unsupported-jump
+            expected: failure
+          - case: disconnected
+            expected: failure
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Install Ansible
+        run: python -m pip install "ansible-core>=2.15,<2.20"
+
+      - name: Exercise upgrade route
+        run: >-
+          tests/functional/run-route-test.sh
+          "${{ matrix.case }}"
+          "${{ matrix.expected }}"
